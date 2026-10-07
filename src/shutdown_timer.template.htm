@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=9" />
+<meta http-equiv="Content-Type" content="text/html; charset=us-ascii" />
+<title>定时关机</title>
+<HTA:APPLICATION
+    ID="timerApp"
+    APPLICATIONNAME="ShutdownTimer"
+    BORDER="thin"
+    CAPTION="yes"
+    ICON="shutdown_timer.ico"
+    MAXIMIZEBUTTON="no"
+    MINIMIZEBUTTON="yes"
+    SHOWINTASKBAR="yes"
+    SINGLEINSTANCE="yes"
+    SYSMENU="yes"
+    SCROLL="no"
+    INNERBORDER="no"
+    SELECTION="no"
+    WINDOWSTATE="minimize"
+/>
+<style>
+html, body { width:100%; height:100%; margin:0; padding:0; overflow:hidden; }
+body { background:#edf3fb; color:#20324d; font-size:20px;
+    font-family:"Microsoft YaHei UI","Microsoft YaHei","Segoe UI",sans-serif; }
+* { box-sizing:border-box; }
+.wrapper { width:100%; height:100%; padding:.9em; }
+.card { width:100%; height:100%; padding:1.05em 1.35em;
+    background:#fff; border:1px solid #e0e8f3; border-radius:18px;
+    box-shadow:0 6px 22px rgba(37,70,119,.09); text-align:center; }
+.title { margin:0; font-size:1.9em; line-height:1.35; font-weight:700;
+    color:#1d3556; letter-spacing:.04em; white-space:nowrap; }
+.brand { display:inline-block; position:relative; width:1.05em; height:1.05em;
+    margin-right:.28em; vertical-align:-.1em; background:#286be8; border-radius:.28em; }
+.clock { position:absolute; top:.21em; left:.21em; width:.63em; height:.63em;
+    border:.065em solid #fff; border-radius:50%; }
+.hand-v { position:absolute; left:.225em; top:.08em; height:.23em; width:.055em; background:#fff; }
+.hand-h { position:absolute; left:.225em; top:.265em; height:.055em; width:.18em; background:#fff; }
+.status { margin:.8em 0 .85em; padding:.7em .7em; background:#f4f7fb; border:1px solid #dce5f0; border-radius:16px; text-align:center; }
+.status-label { display:inline-block; font-size:.9em; font-weight:600; line-height:1.5; color:#71839c; }
+.status-label:before { content:""; display:inline-block; width:.45em; height:.45em; margin-right:.45em; vertical-align:.08em; border-radius:50%; background:#a5b4c7; }
+.countdown { display:block; margin:.07em 0 .08em; font:700 2.65em/1.15 "Segoe UI",sans-serif; letter-spacing:.03em; color:#9baac0; white-space:nowrap; }
+.status-lines { display:inline-block; max-width:100%; text-align:left; vertical-align:top; }
+.status-detail,.status-note { margin:0; text-align:left; font-size:.9em; line-height:1.6; color:#677b98; white-space:normal; }
+.active-status { background:#eef6ff; border-color:#c6dcfa; }
+.active-status .status-label { color:#2465d6; }
+.active-status .status-label:before { background:#2465d6; }
+.active-status .countdown { color:#2465d6; }
+.warning-status { background:#fff8eb; border-color:#f4d69c; }
+.warning-status .countdown { color:#c87b20; }
+.warning-status .status-label:before { background:#c87b20; }
+.urgent-status { background:#fff0ed; border-color:#f2beb3; }
+.urgent-status .countdown { color:#cc4c39; }
+.urgent-status .status-label:before { background:#cc4c39; }
+.btn { display:block; width:100%; height:2.85em; margin:0 0 .45em;
+    padding:0 .6em; border:1px solid #286be8; border-radius:12px;
+    background:#286be8; color:#fff; font-size:1.2em; font-weight:500;
+    font-family:"Microsoft YaHei UI","Microsoft YaHei","Segoe UI",sans-serif;
+    cursor:pointer; line-height:1.2; }
+.btn:hover { background:#205fd5; border-color:#205fd5; }
+.btn:active { background:#1b51bc; }
+.btn:focus { outline:0; box-shadow:0 0 0 2px #a7c5ff; }
+.section-label { margin:0 0 .45em; text-align:left; font-size:.9em; font-weight:600; line-height:1.5; color:#355074; }
+.preset-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+.preset-table td { padding:0 .225em .45em; }
+.preset-table td.edge-left { padding-left:0; }
+.preset-table td.edge-right { padding-right:0; }
+.preset-table .last-row td { padding-bottom:0; }
+.presets .btn { height:2.3em; margin:0; background:#f0f5ff; color:#2465d6; border-color:#dce7fa; font-weight:600; }
+.presets .btn:hover { background:#286be8; border-color:#286be8; color:#fff; }
+.presets .btn:active { background:#205fd5; color:#fff; }
+.custom { margin-top:.85em; padding-top:.8em; border-top:1px solid #e8edf5; text-align:left; }
+.custom-label { display:block; font-size:.9em; font-weight:600; line-height:1.5; margin-bottom:.45em; color:#355074; }
+.custom-row { width:100%; border-collapse:collapse; table-layout:fixed; }
+.input-cell { width:64%; padding:0 .5em 0 0; }
+.action-cell { width:36%; padding:0; }
+.input-box { position:relative; height:2.65em; }
+.minutes { width:100%; height:100%; padding:.2em 3.4em .2em .65em;
+    font-size:1.2em; font-family:"Microsoft YaHei UI","Microsoft YaHei","Segoe UI",sans-serif;
+    line-height:1.4; border:1px solid #cbd9ec; border-radius:10px; background:#f8faff; color:#20324d; }
+.minutes:focus { border-color:#286be8; outline:0; box-shadow:0 0 0 2px #dce8ff; }
+.unit { position:absolute; right:.75em; top:0; line-height:2.94em; font-size:.9em; color:#677b98; white-space:nowrap; }
+.custom-action { height:2.2083em; margin:0; font-size:1.2em; font-weight:600; white-space:nowrap; }
+.cancel { margin:.75em 0 0; height:2.435em; background:#fff4f3; color:#c2383e; border-color:#f0c7c7; font-size:1.15em; font-weight:600; letter-spacing:.02em; }
+.cancel:hover { background:#ffe9e7; color:#ad2931; border-color:#e7a6a7; }
+.cancel:active { background:#ffdedb; color:#9c222a; }
+.cancel:focus { box-shadow:0 0 0 2px #f4c4c5; }
+.urgent-cancel { background:#ffe9e7; border-color:#dc7e83; color:#b32932; }
+.urgent-cancel:hover { background:#ffdedb; border-color:#d1656b; color:#9c222a; }
+.tray-link { display:block; width:100%; height:2.435em; margin:.5em auto 0; padding:0 .8em; border:1px solid #c8daf8; border-radius:12px; background:#f4f8ff; color:#2465d6;
+    font-family:"Microsoft YaHei UI","Microsoft YaHei","Segoe UI",sans-serif; font-size:1.15em; font-weight:600; letter-spacing:.02em; line-height:1.2; cursor:pointer; }
+.tray-link:hover { background:#e7f0ff; border-color:#9dbdee; }
+.tray-link:focus { outline:0; box-shadow:0 0 0 2px #a7c5ff; }
+</style>
+<script language="javascript">
+var shell = null;
+var busy = false;
+var resizeTimer = null;
+var fitting = false;
+
+function getShell() {
+    if (!shell) { shell = new ActiveXObject("WScript.Shell"); }
+    return shell;
+}
+
+function showError(message) { alert(message); }
+
+function setShutdown(seconds, message) {
+    if (busy) { return; }
+    if (!isFinite(seconds) || seconds < 60 || seconds > 315360000 || Math.floor(seconds) !== seconds) {
+        showError("请输入有效的关机时间。");
+        return;
+    }
+    busy = true;
+    try {
+        var oldResult = getShell().Run("shutdown.exe -a", 0, true);
+        if (oldResult !== 0 && oldResult !== 1116) {
+            showError("无法取消原来的关机计划，请重试。\n错误代码：" + oldResult);
+            return;
+        }
+        var result = getShell().Run("shutdown.exe -s -t " + seconds, 0, true);
+        if (result === 0) {
+            alert(message);
+            window.close();
+        } else {
+            showError("关机时间未设置成功，请重试。\n错误代码：" + result);
+        }
+    } catch (error) {
+        showError("无法设置定时关机。\n" + (error.description || error.message || ""));
+    } finally { busy = false; }
+}
+
+function setCustomShutdown() {
+    var input = document.getElementById("customMinutes");
+    var text = input.value.replace(/^\s+|\s+$/g, "");
+    if (!/^\d+$/.test(text) || Number(text) < 1) {
+        showError("请输入大于 0 的整数分钟数，例如 45。");
+        input.focus();
+        input.select();
+        return;
+    }
+    var minutes = Number(text);
+    if (minutes > 5256000) {
+        showError("时间过长，请输入不超过 5256000 的分钟数。");
+        input.focus();
+        input.select();
+        return;
+    }
+    setShutdown(minutes * 60, "已设置：" + minutes + " 分钟后自动关机。");
+}
+
+function customKeyDown(event) {
+    event = event || window.event;
+    if (event.keyCode === 13) {
+        if (event.preventDefault) { event.preventDefault(); }
+        event.returnValue = false;
+        setCustomShutdown();
+        return false;
+    }
+    return true;
+}
+
+function cancelShutdown() {
+    if (busy) { return; }
+    busy = true;
+    try {
+        var result = getShell().Run("shutdown.exe -a", 0, true);
+        if (result === 0 || result === 1116) {
+            alert(result === 0 ? "已取消自动关机。" : "当前没有待执行的定时关机。");
+            window.close();
+        } else {
+            showError("取消关机未成功，请重试。\n错误代码：" + result);
+        }
+    } catch (error) {
+        showError("无法取消定时关机。\n" + (error.description || error.message || ""));
+    } finally { busy = false; }
+}
+
+function fitLayout() {
+    if (fitting || !document.getElementById("content")) { return; }
+    fitting = true;
+    try {
+        var unit = 20;
+        var viewport = document.documentElement;
+        var content = document.getElementById("content");
+        document.body.style.fontSize = unit + "px";
+        for (var i = 0; i < 10; i++) {
+            var available = viewport.clientHeight || document.body.clientHeight;
+            var required = content.offsetHeight + 4 * unit + 4;
+            if (required <= available) { break; }
+            unit = unit * available / required * 0.98;
+            document.body.style.fontSize = unit + "px";
+        }
+    } finally { fitting = false; }
+}
+
+window.onload = function () {
+    var w = Math.min(620, screen.availWidth - 24);
+    var h = Math.min(840, screen.availHeight - 24);
+    window.resizeTo(w, h);
+    var left = (typeof screen.availLeft === "number" ? screen.availLeft : 0) + Math.max(0, (screen.availWidth - w) / 2);
+    var top = (typeof screen.availTop === "number" ? screen.availTop : 0) + Math.max(0, (screen.availHeight - h) / 2);
+    window.moveTo(Math.round(left), Math.round(top));
+    fitLayout();
+    window.setTimeout(fitLayout, 120);
+};
+window.onresize = function () {
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(fitLayout, 60);
+};
+</script>
+</head>
+<body scroll="no">
+<div class="wrapper">
+  <div class="card">
+    <div id="content">
+      <h1 class="title"><span class="brand" aria-hidden="true"><span class="clock"><span class="hand-v"></span><span class="hand-h"></span></span></span>定时关机</h1>
+      <div id="statusPanel" class="status">
+        <div id="statusLabel" class="status-label">暂无关机计划</div>
+        <div id="countdown" class="countdown">--:--:--</div>
+        <div id="statusLines" class="status-lines" style="display:none">
+          <div id="shutdownAt" class="status-detail" style="display:none"></div>
+          <div id="statusNote" class="status-note" style="display:none"></div>
+        </div>
+      </div>
+      <div class="presets">
+        <div class="section-label">快速设定</div>
+        <table class="preset-table" role="presentation"><tbody>
+          <tr><td class="edge-left" colspan="2"><button class="btn" onclick="setShutdown(1800)">30 分钟</button></td><td colspan="2"><button class="btn" onclick="setShutdown(3600)">1 小时</button></td><td class="edge-right" colspan="2"><button class="btn" onclick="setShutdown(5400)">1.5 小时</button></td></tr>
+          <tr class="last-row"><td class="edge-left" colspan="3"><button class="btn" onclick="setShutdown(7200)">2 小时</button></td><td class="edge-right" colspan="3"><button class="btn" onclick="setShutdown(10800)">3 小时</button></td></tr>
+        </tbody></table>
+      </div>
+      <div class="custom">
+        <label class="custom-label" for="customMinutes">自定义关机时间</label>
+        <table class="custom-row" role="presentation"><tbody><tr>
+          <td class="input-cell"><div class="input-box"><input id="customMinutes" class="minutes" type="text" maxlength="7" value="45" title="请输入大于 0 的整数分钟数" onkeydown="return customKeyDown(event);" /><span class="unit">分钟后</span></div></td>
+          <td class="action-cell"><button class="btn custom-action" onclick="setCustomShutdown()">设置关机</button></td>
+        </tr></tbody></table>
+      </div>
+      <button id="cancelButton" class="btn cancel" onclick="cancelShutdown()">取消已设置的关机</button>
+      <button class="tray-link" onclick="minimizeToTray()">隐藏到系统托盘</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
