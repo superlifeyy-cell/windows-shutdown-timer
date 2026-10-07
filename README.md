@@ -1,6 +1,8 @@
-# 定时关机 / Windows Shutdown Timer
+# 定时关机 / Windows-shutdown-timer
 
 一个简洁的 Windows 定时关机工具：蓝白大字界面、托盘倒计时、关机前提醒，以及单文件自动安装。
+
+**搜索关键词：** 定时关机、自动关机、Windows-shutdown-timer；Windows-shutdown-timber 也作为搜索别名保留。
 
 **[下载最新版](https://github.com/superlifeyy-cell/windows-shutdown-timer/releases/latest)**
 
