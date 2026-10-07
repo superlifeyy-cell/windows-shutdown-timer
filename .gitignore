@@ -1,0 +1,8 @@
+build/
+dist/
+tests/*.exe
+tests/*.ini*
+tests/*checks.txt
+tests/*-qa*/
+*.pdb
+*.tmp
