@@ -4,7 +4,7 @@
 
 **[下载最新版](https://github.com/superlifeyy-cell/windows-shutdown-timer/releases/latest)**
 
-下载安装 `定时关机.exe`，双击后自动准备程序文件、创建桌面快捷方式并打开界面。普通用户无需编译源码，也无需手动放置 HTA、脚本和图标。
+下载安装 `ShutdownTimer.exe`，双击后自动准备程序文件、创建桌面快捷方式并打开界面。普通用户无需编译源码，也无需手动放置 HTA、脚本和图标。
 
 ![主界面](docs/main-window.png)
 
@@ -20,7 +20,7 @@
 
 ## 安装与更新
 
-1. 从 [Releases](https://github.com/superlifeyy-cell/windows-shutdown-timer/releases) 下载 `定时关机.exe`，或下载只含该 EXE 的压缩包。
+1. 从 [Releases](https://github.com/superlifeyy-cell/windows-shutdown-timer/releases) 下载 `ShutdownTimer.exe`，或下载只含该 EXE 的压缩包。
 2. 双击 EXE。程序按当前用户安装，无需管理员权限，桌面图标使用 EXE 内置图标。
 3. 以后双击桌面“定时关机”即可打开。安装完成后，快捷方式不依赖下载文件所在位置。
 4. 更新时运行新版 EXE。安装过程保留正在运行的旧版及其计划；旧版退出后，下次启动启用新版。旧版有活动计划时，“取消并退出”会取消该计划，可在新版重新设置。
