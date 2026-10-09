@@ -1,53 +1,33 @@
-﻿param([string]$OutputDirectory='')
+﻿param([string]$OutputDirectory='', [switch]$Verify)
 $ErrorActionPreference='Stop'
 $timerRoot=$PSScriptRoot
-$timerRuntime=Join-Path $timerRoot 'build\runtime'
 $timerOutput=if($OutputDirectory) {[IO.Path]::GetFullPath($OutputDirectory)} else {Join-Path $timerRoot 'dist'}
-New-Item -ItemType Directory -Path $timerRuntime,$timerOutput -Force | Out-Null
-function Convert-TimerScriptAscii([string]$Text) {
-    $timerBuffer=[Text.StringBuilder]::new()
-    foreach($timerCharacter in $Text.ToCharArray()) {
-        if([int]$timerCharacter -lt 128) {[void]$timerBuffer.Append($timerCharacter)}
-        else {[void]$timerBuffer.Append(('\u{0:x4}' -f [int]$timerCharacter))}
-    }
-    return $timerBuffer.ToString()
-}
-function Convert-TimerHtmlAscii([string]$Text) {
-    $timerBuffer=[Text.StringBuilder]::new()
-    foreach($timerCharacter in $Text.ToCharArray()) {
-        if([int]$timerCharacter -lt 128) {[void]$timerBuffer.Append($timerCharacter)}
-        else {[void]$timerBuffer.Append(('&#{0};' -f [int]$timerCharacter))}
-    }
-    return $timerBuffer.ToString()
-}
-function Read-TimerSource([string]$Name) {
-    return [IO.File]::ReadAllText((Join-Path $timerRoot ('src\'+$Name)),[Text.Encoding]::UTF8).Replace("`r`n","`n")
-}
-$timerHtml=Read-TimerSource 'shutdown_timer.template.htm'
-$timerUi=Read-TimerSource 'shutdown_timer_ui.template.js'
-$timerInline=[regex]::new('<script language="javascript">.*?</script>',[Text.RegularExpressions.RegexOptions]::Singleline)
-$timerHtml=$timerInline.Replace($timerHtml,[Text.RegularExpressions.MatchEvaluator]{param($Match) '<script language="javascript" src="shutdown_timer_common.js"></script>'+"`n"+'<script language="javascript">'+"`n"+$timerUi+"`n"+'</script>'},1)
-$timerScripts=[regex]::new('<script\b.*?</script>',[Text.RegularExpressions.RegexOptions]::Singleline -bor [Text.RegularExpressions.RegexOptions]::IgnoreCase)
-$timerHtml=$timerScripts.Replace($timerHtml,[Text.RegularExpressions.MatchEvaluator]{param($Match) Convert-TimerScriptAscii $Match.Value})
-$timerHtml=Convert-TimerHtmlAscii $timerHtml
-$timerCommon=Convert-TimerScriptAscii (Read-TimerSource 'shutdown_timer_common.template.js')
-[IO.File]::WriteAllText((Join-Path $timerRuntime 'shutdown_timer.hta'),$timerHtml.Replace("`n","`r`n"),[Text.Encoding]::ASCII)
-[IO.File]::WriteAllText((Join-Path $timerRuntime 'shutdown_timer_common.js'),$timerCommon.Replace("`n","`r`n"),[Text.Encoding]::ASCII)
-Copy-Item -LiteralPath (Join-Path $timerRoot 'assets\shutdown_timer.ico') -Destination (Join-Path $timerRuntime 'shutdown_timer.ico') -Force
+New-Item -ItemType Directory -Path $timerOutput -Force | Out-Null
 $timerCompiler=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-if(-not (Test-Path -LiteralPath $timerCompiler)) {$timerCompiler=Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe'}
-if(-not (Test-Path -LiteralPath $timerCompiler)) {throw 'The .NET Framework 4.x C# compiler was not found.'}
-$timerExe=Join-Path $timerOutput '定时关机.exe'
-$timerArguments=@('/nologo','/target:winexe','/platform:anycpu','/optimize+',('/out:'+$timerExe),('/win32manifest:'+(Join-Path $timerRoot 'src\shutdown_timer.manifest')),('/win32icon:'+(Join-Path $timerRuntime 'shutdown_timer.ico')))
-foreach($timerAsset in @('shutdown_timer.hta','shutdown_timer_common.js','shutdown_timer.ico')) {
-    $timerArguments+=('/resource:'+(Join-Path $timerRuntime $timerAsset)+',ShutdownTimer.'+$timerAsset)
-}
-$timerArguments+=(Join-Path $timerRoot 'src\shutdown_timer_tray.cs')
-$timerArguments+=(Join-Path $timerRoot 'src\shutdown_timer_bundle.cs')
-& $timerCompiler @timerArguments
+if(-not (Test-Path $timerCompiler)) {$timerCompiler=Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe'}
+if(-not (Test-Path $timerCompiler)) {throw 'The .NET Framework C# compiler was not found.'}
+$timerSource=@('native_model.cs','native_platform.cs','native_controls.cs','native_app.cs') | ForEach-Object {Join-Path $timerRoot ('src\'+$_)}
+$timerExe=Join-Path $timerOutput 'ShutdownTimer.exe'
+$timerArguments=@('/nologo','/target:winexe','/platform:anycpu','/optimize+','/reference:System.dll','/reference:System.Core.dll','/reference:System.Drawing.dll','/reference:System.Windows.Forms.dll',('/out:'+$timerExe),('/win32manifest:'+(Join-Path $timerRoot 'src\shutdown_timer.manifest')),('/win32icon:'+(Join-Path $timerRoot 'assets\shutdown_timer.ico')),('/resource:'+(Join-Path $timerRoot 'assets\shutdown_timer.ico')+',ShutdownTimer.icon'))
+& $timerCompiler @timerArguments @timerSource
 if($LASTEXITCODE -ne 0) {throw 'Compilation failed.'}
-$timerZip=Join-Path $timerOutput '定时关机_单文件版.zip'
-Compress-Archive -LiteralPath $timerExe -DestinationPath $timerZip -Force
-$timerChecksum=(Get-FileHash -LiteralPath $timerExe -Algorithm SHA256).Hash.ToLowerInvariant()
-[IO.File]::WriteAllText((Join-Path $timerOutput 'SHA256SUMS.txt'),($timerChecksum+'  定时关机.exe'+"`r`n"),[Text.UTF8Encoding]::new($false))
-Write-Output ('Built: '+$timerExe)
+if($Verify) {
+    $timerTests=Join-Path $timerOutput 'NativeTests.exe'
+    $timerTestArgs=@('/nologo','/target:exe','/main:ShutdownTimer.NativeTests','/reference:System.dll','/reference:System.Core.dll','/reference:System.Drawing.dll','/reference:System.Windows.Forms.dll',('/out:'+$timerTests),('/resource:'+(Join-Path $timerRoot 'assets\shutdown_timer.ico')+',ShutdownTimer.icon'))
+    & $timerCompiler @timerTestArgs @timerSource (Join-Path $timerRoot 'tests\native_tests.cs')
+    if($LASTEXITCODE -ne 0) {throw 'Test compilation failed.'}
+    & $timerTests
+    if($LASTEXITCODE -ne 0) {throw 'Native tests failed.'}
+    $timerPreview=Join-Path $timerOutput 'previews'
+    $timerProcess=Start-Process -FilePath $timerExe -ArgumentList @('--preview',('"'+$timerPreview+'"')) -PassThru
+    if(-not $timerProcess.WaitForExit(60000)) {$timerProcess.Kill(); throw 'Preview generation timed out.'}
+    if($timerProcess.ExitCode -ne 0) {throw 'Preview generation failed.'}
+}
+Copy-Item (Join-Path $timerRoot 'docs\release-v2.1.11.txt') (Join-Path $timerOutput '使用说明.txt') -Force
+$timerZip=Join-Path $timerOutput 'ShutdownTimer-v2.1.11.zip'
+$timerChecksum=(Get-FileHash $timerExe -Algorithm SHA256).Hash.ToLowerInvariant()
+[IO.File]::WriteAllText((Join-Path $timerOutput 'SHA256SUMS.txt'),($timerChecksum+'  ShutdownTimer.exe'+"`r`n"),[Text.UTF8Encoding]::new($false))
+Compress-Archive -LiteralPath $timerExe,(Join-Path $timerOutput '使用说明.txt'),(Join-Path $timerOutput 'SHA256SUMS.txt') -DestinationPath $timerZip -Force
+$timerZipHash=(Get-FileHash $timerZip -Algorithm SHA256).Hash.ToLowerInvariant()
+[IO.File]::AppendAllText((Join-Path $timerOutput 'SHA256SUMS.txt'),($timerZipHash+'  ShutdownTimer-v2.1.11.zip'+"`r`n"),[Text.UTF8Encoding]::new($false))
+Write-Output ('Built native desktop application: '+$timerExe)
