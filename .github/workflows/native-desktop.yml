@@ -1,0 +1,48 @@
+name: Native desktop build and release
+on:
+  push:
+    branches: [main, native-desktop]
+    paths:
+      - 'src/**'
+      - 'assets/**'
+      - 'tests/native_tests.cs'
+      - 'build.ps1'
+      - 'docs/release-v2.1.11.txt'
+      - '.github/workflows/native-desktop.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and verify native desktop application
+        shell: powershell
+        run: .\build.ps1 -Verify
+      - name: Verify executable resources
+        shell: powershell
+        run: |
+          $assembly=[Reflection.Assembly]::LoadFile((Join-Path $pwd 'dist\ShutdownTimer.exe'))
+          $resources=$assembly.GetManifestResourceNames()
+          if($resources.Count -ne 1 -or $resources[0] -ne 'ShutdownTimer.icon') {throw 'Unexpected embedded runtime payload.'}
+          Write-Output 'Only the icon is embedded; no HTA or JavaScript resources.'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ShutdownTimer-v2.1.11-windows
+          path: |
+            dist/ShutdownTimer.exe
+            dist/ShutdownTimer-v2.1.11.zip
+            dist/SHA256SUMS.txt
+            dist/使用说明.txt
+            dist/previews/*.png
+      - name: Publish verified release
+        if: github.ref == 'refs/heads/main'
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v2.1.11 dist/ShutdownTimer.exe dist/ShutdownTimer-v2.1.11.zip dist/SHA256SUMS.txt --target $env:GITHUB_SHA --title '定时关机 v2.1.11 · C# 原生桌面版' --notes-file docs/release-v2.1.11.txt
+          if($LASTEXITCODE -ne 0) {throw 'Release publication failed.'}
